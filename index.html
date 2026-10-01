@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Weekly Planner & Wellness Tracker</title>
+  <meta name="description" content="A weekly planner, mood & focus tracker, medication tracker, and personal journal." />
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#9b8ec4" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="My Planner" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="icons/favicon.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest" defer></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream: { 50: '#fefdfb', 100: '#faf8f5', 200: '#f3f0eb', 300: '#e8e4de' },
+            lavender: { 100: '#f3f0fa', 200: '#e6ddf4', 300: '#d4c8ea', 400: '#b8a5d9', 500: '#9b8ec4', 600: '#7d6daa', 700: '#634f91', 800: '#4a3670' },
+            sage: { 100: '#eef5f0', 200: '#d4e8da', 300: '#b5d7bf', 400: '#7aab8a', 500: '#5e9670', 600: '#4a7a59', 700: '#3a6247' },
+            peach: { 100: '#fff5f0', 200: '#ffe8dd', 300: '#ffd4c2', 400: '#ffb799', 500: '#f09070', 600: '#d97050' },
+            rose: { 100: '#fef0f3', 200: '#fcd9e0', 300: '#f9b8c4', 400: '#f08da0' },
+            sky: { 100: '#eef4fb', 200: '#d5e4f5', 300: '#a8c8ea', 400: '#6fa4d6' },
+            mint: { 100: '#effaf5', 200: '#d4f0e0', 300: '#a8e0c0' },
+            gold: { 100: '#fdf8ee', 200: '#f9edc8', 300: '#f0d88a', 400: '#dbb84a' },
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          borderRadius: {
+            '3xl': '1.25rem',
+            '4xl': '1.5rem',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --bg: #faf8f5;
+      --card: #ffffff;
+      --lavender: #9b8ec4;
+      --lavender-light: #f3f0fa;
+      --sage: #7aab8a;
+      --sage-light: #eef5f0;
+      --peach: #f09070;
+      --peach-light: #fff5f0;
+      --cream: #faf8f5;
+    }
+    * { box-sizing: border-box; }
+    body { background: var(--bg); font-family: 'Inter', sans-serif; color: #3a3535; }
+    .tab-content { display: none; opacity: 0; transition: opacity 0.3s ease; }
+    .tab-content.active { display: block; opacity: 1; }
+    .mood-btn { transition: all 0.2s ease; }
+    .mood-btn.selected { box-shadow: 0 0 0 3px var(--lavender); transform: scale(1.15); }
+    .star-btn { cursor: pointer; transition: transform 0.15s ease; }
+    .star-btn:hover { transform: scale(1.2); }
+    input[type="range"] {
+      -webkit-appearance: none; appearance: none; height: 8px;
+      background: linear-gradient(90deg, var(--sage-light), var(--sage));
+      border-radius: 999px; outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 20px; height: 20px;
+      background: var(--sage); border-radius: 50%; cursor: pointer;
+      border: 3px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+    .med-checked { background-color: #eef5f0 !important; }
+    .planner-grid::-webkit-scrollbar { height: 8px; }
+    .planner-grid::-webkit-scrollbar-track { background: #f3f0eb; border-radius: 8px; }
+    .planner-grid::-webkit-scrollbar-thumb { background: #d4c8ea; border-radius: 8px; }
+    .day-border-0 { border-left: 3px solid #d4c8ea; }
+    .day-border-1 { border-left: 3px solid #a8c8ea; }
+    .day-border-2 { border-left: 3px solid #b5d7bf; }
+    .day-border-3 { border-left: 3px solid #f0d88a; }
+    .day-border-4 { border-left: 3px solid #ffd4c2; }
+    .day-border-5 { border-left: 3px solid #fcd9e0; }
+    .day-border-6 { border-left: 3px solid #b8a5d9; }
+    .progress-ring { transform: rotate(-90deg); }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeIn 0.35s ease forwards; }
+    .compact-input {
+      background: #f8f6f3; border: 1px solid transparent; border-radius: 8px;
+      padding: 4px 8px; font-size: 13px; width: 100%; transition: all 0.2s;
+      font-family: 'Inter', sans-serif; color: #3a3535;
+    }
+    .compact-input:focus {
+      background: #fff; border-color: #d4c8ea; outline: none;
+      box-shadow: 0 0 0 2px rgba(155,142,196,0.15);
+    }
+    .compact-input::placeholder { color: #b3ada8; }
+    .compact-input.input-error {
+      border-color: #e53e3e !important;
+      background: #fff5f5 !important;
+      box-shadow: 0 0 0 2px rgba(229,62,62,0.15) !important;
+    }
+    .med-name-error {
+      color: #e53e3e;
+      font-size: 12px;
+      margin-top: 2px;
+      display: none;
+    }
+    .med-name-error.visible {
+      display: block;
+    }
+    textarea.compact-input { resize: vertical; min-height: 48px; }
+    .check-cell { width: 40px; height: 40px; border-radius: 10px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; background: #f8f6f3; border: 1px solid #e8e4de; }
+    .check-cell.checked { background: #eef5f0; border-color: #7aab8a; }
+    .check-cell.checked svg { color: #4a7a59; }
+    @media (max-width: 767px) {
+      .planner-grid { overflow-x: auto; }
+      .planner-cols { min-width: 1400px; }
+    }
+  </style>
+</head>
+<body data-id="0" class="min-h-screen flex flex-col">
+  <app-icon data-id="1" hidden data-icon="heart-pulse" data-palette="Green"></app-icon>
+  <app-disclaimer data-id="2" intent="medical"></app-disclaimer>
+
+  <!-- HEADER -->
+  <header data-id="3" class="sticky top-0 z-50 bg-white/90 backdrop-blur-md shadow-sm">
+    <div data-id="4" class="max-w-7xl mx-auto px-4 md:px-6 py-3 flex items-center justify-between">
+      <h1 data-id="5" class="text-lg md:text-xl font-bold text-lavender-700">My Weekly Planner ✨</h1>
+      <div data-id="6" class="flex items-center gap-2 md:gap-3">
+        <button data-id="7" id="prev-week" class="p-2 rounded-xl hover:bg-lavender-100 transition" aria-label="Previous week">
+          <i data-id="8" data-lucide="chevron-left" class="w-5 h-5 text-lavender-600"></i>
+        </button>
+        <span data-id="9" id="week-label" class="text-sm md:text-base font-medium text-lavender-800 min-w-[180px] md:min-w-[220px] text-center"></span>
+        <button data-id="10" id="next-week" class="p-2 rounded-xl hover:bg-lavender-100 transition" aria-label="Next week">
+          <i data-id="11" data-lucide="chevron-right" class="w-5 h-5 text-lavender-600"></i>
+        </button>
+        <button id="jump-today-btn" class="hidden md:inline-block px-2 py-1 text-xs font-medium rounded-lg bg-lavender-100 text-lavender-700 hover:bg-lavender-200 transition">Today</button>
+        <input type="date" id="jump-date" class="compact-input hidden sm:block text-xs" style="width:auto;" aria-label="Jump to date" />
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="install-btn" class="hidden px-3 py-1.5 text-xs font-semibold rounded-xl bg-sage-500 text-white hover:bg-sage-600 transition" title="Install this app on your device">⬇️ Install App</button>
+        <button id="data-menu-btn" class="p-2 rounded-xl hover:bg-lavender-100 transition" aria-label="Data options" title="Backup, restore, calendar export">
+          <i data-lucide="settings" class="w-5 h-5 text-lavender-600"></i>
+        </button>
+        <span data-id="12" class="hidden md:inline text-sm text-lavender-500 font-medium">Hi, Shirell 👋</span>
+      </div>
+    </div>
+    <!-- DATA MENU -->
+    <div id="data-menu" class="hidden max-w-7xl mx-auto px-4 md:px-6 pb-3 flex flex-wrap gap-2 text-xs">
+      <button id="export-json-btn" class="px-3 py-1.5 rounded-lg bg-lavender-100 text-lavender-700 hover:bg-lavender-200 transition font-medium">💾 Backup (download)</button>
+      <label class="px-3 py-1.5 rounded-lg bg-lavender-100 text-lavender-700 hover:bg-lavender-200 transition font-medium cursor-pointer">
+        ♻️ Restore backup
+        <input type="file" id="import-json-input" accept="application/json" class="hidden" />
+      </label>
+      <button id="export-ics-btn" class="px-3 py-1.5 rounded-lg bg-sky-200 text-sky-700/90 hover:brightness-95 transition font-medium" style="color:#2f5a7a;">📆 Export week to Calendar (.ics)</button>
+    </div>
+    <!-- TABS -->
+    <nav data-id="13" class="max-w-7xl mx-auto px-4 md:px-6 flex gap-1 overflow-x-auto pb-1" id="tab-nav">
+      <button data-id="14" class="tab-btn whitespace-nowrap px-4 py-2 text-sm font-medium rounded-t-xl transition" data-tab="planner">📅 Weekly Planner</button>
+      <button data-id="15" class="tab-btn whitespace-nowrap px-4 py-2 text-sm font-medium rounded-t-xl transition" data-tab="mood">😊 Mood & Focus</button>
+      <button data-id="16" class="tab-btn whitespace-nowrap px-4 py-2 text-sm font-medium rounded-t-xl transition" data-tab="meds">💊 Medication</button>
+      <button class="tab-btn whitespace-nowrap px-4 py-2 text-sm font-medium rounded-t-xl transition" data-tab="journal">📓 Journal</button>
+      <button data-id="17" class="tab-btn whitespace-nowrap px-4 py-2 text-sm font-medium rounded-t-xl transition" data-tab="summary">📊 Weekly Summary</button>
+    </nav>
+  </header>
+
+  <!-- MAIN -->
+  <main data-id="18" class="flex-1 max-w-7xl mx-auto w-full px-4 md:px-6 py-6">
+
+    <!-- TAB 1: WEEKLY PLANNER -->
+    <section data-id="19" id="tab-planner" class="tab-content">
+      <div data-id="20" class="planner-grid">
+        <div data-id="21" id="planner-cols" class="planner-cols grid grid-cols-7 gap-3"></div>
+      </div>
+    </section>
+
+    <!-- TAB 2: MOOD & FOCUS -->
+    <section data-id="22" id="tab-mood" class="tab-content">
+      <div data-id="23" id="mood-cards" class="flex flex-col gap-4 max-w-2xl mx-auto"></div>
+    </section>
+
+    <!-- TAB 3: MEDICATION -->
+    <section data-id="24" id="tab-meds" class="tab-content">
+      <div data-id="25" class="max-w-4xl mx-auto">
+        <!-- Add Medication -->
+        <div data-id="26" class="bg-white rounded-2xl p-5 md:p-6 mb-6" style="box-shadow: 0 2px 12px rgba(155,142,196,0.08);">
+          <h2 data-id="27" class="text-lg font-semibold text-lavender-700 mb-4">💊 Manage Medications</h2>
+          <div data-id="28" id="med-today-bar" class="mb-4 p-3 rounded-xl bg-sage-100 flex items-center gap-3">
+            <span data-id="29" class="text-sm font-medium text-sage-700" id="med-today-text">0 of 0 medications taken today</span>
+            <div data-id="30" class="flex-1 h-2 bg-sage-200 rounded-full overflow-hidden">
+              <div data-id="31" id="med-today-progress" class="h-full bg-sage-400 rounded-full transition-all" style="width:0%"></div>
+            </div>
+          </div>
+          <div data-id="32" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-1">
+            <div data-id="33">
+              <input data-id="34" id="med-name" type="text" placeholder="Medication name" class="compact-input" />
+              <div data-id="35" id="med-name-error" class="med-name-error">Please enter a medication name</div>
+            </div>
+            <input data-id="36" id="med-dosage" type="text" placeholder="Dosage (e.g. 10mg)" class="compact-input" />
+            <select data-id="37" id="med-freq" class="compact-input">
+              <option data-id="38" value="daily">Daily</option>
+              <option data-id="39" value="twice">Twice Daily</option>
+              <option data-id="40" value="asneeded">As Needed</option>
+            </select>
+            <select data-id="41" id="med-time" class="compact-input">
+              <option data-id="42" value="morning">🌅 Morning</option>
+              <option data-id="43" value="afternoon">☀️ Afternoon</option>
+              <option data-id="44" value="evening">🌇 Evening</option>
+              <option data-id="45" value="bedtime">🌙 Bedtime</option>
+            </select>
+          </div>
+          <div data-id="46" class="mt-3">
+            <button data-id="47" id="add-med-btn" class="px-5 py-2 bg-lavender-500 text-white rounded-xl text-sm font-medium hover:bg-lavender-600 transition">
+              Add Medication
+            </button>
+          </div>
+        </div>
+        <!-- Med List & Grid -->
+        <div data-id="48" class="bg-white rounded-2xl p-5 md:p-6" style="box-shadow: 0 2px 12px rgba(155,142,196,0.08);">
+          <div data-id="49" id="med-grid-area" class="overflow-x-auto"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: JOURNAL -->
+    <section id="tab-journal" class="tab-content">
+      <div class="max-w-3xl mx-auto space-y-6">
+        <div class="bg-white rounded-2xl p-5 md:p-6" style="box-shadow: 0 2px 12px rgba(155,142,196,0.08);">
+          <h2 class="text-lg font-semibold text-lavender-700 mb-1">📓 Personal Journal</h2>
+          <p class="text-xs text-lavender-400 mb-4">A private space for free-form thoughts, separate from your daily reflections.</p>
+          <input type="text" id="journal-title" class="compact-input mb-2" placeholder="Entry title (optional)" />
+          <textarea id="journal-body" class="compact-input mb-3" rows="6" placeholder="Write whatever is on your mind..."></textarea>
+          <div class="flex items-center justify-between">
+            <span id="journal-edit-id" class="hidden"></span>
+            <button id="journal-save-btn" class="px-5 py-2 bg-lavender-500 text-white rounded-xl text-sm font-medium hover:bg-lavender-600 transition">Save Entry</button>
+            <button id="journal-cancel-btn" class="hidden px-4 py-2 text-sm text-lavender-500 hover:text-lavender-700 transition">Cancel edit</button>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 md:p-6" style="box-shadow: 0 2px 12px rgba(155,142,196,0.08);">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-semibold text-lavender-700">Past Entries</h3>
+            <input type="text" id="journal-search" class="compact-input text-xs" style="width:auto; max-width:200px;" placeholder="🔍 Search entries..." />
+          </div>
+          <div id="journal-list" class="space-y-3"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: WEEKLY SUMMARY -->
+    <section data-id="50" id="tab-summary" class="tab-content">
+      <div data-id="51" class="max-w-3xl mx-auto space-y-6">
+        <!-- Streak -->
+        <div data-id="52" class="bg-white rounded-2xl p-5 flex items-center gap-4" style="box-shadow: 0 2px 12px rgba(155,142,196,0.08);">
+          <span data-id="53" class="text-4xl">🔥</span>
+          <div data-id="54">
+            <div data-id="55" class="text-2xl font-bold text-lavender-700" id="streak-count">0</div>
+            <div data-id="56" class="text-sm text-lavender-500">Day check-in streak</div>
+          </div>
+        </div>
+        <!-- Mood Chart -->
+        <div data-id="57" class="bg-white rounded-2xl p-5 md:p-6" style="box-shadow: 0 2px 12px rgba(155,142,196,0.08);">
+          <h3 data-id="58" class="text-base font-semibold text-lavender-700 mb-4">😊 Mood This Week</h3>
+          <div data-id="59" id="mood-chart" class="space-y-2"></div>
+        </div>
+        <!-- Focus Chart -->
+        <div data-id="60" class="bg-white rounded-2xl p-5 md:p-6" style="box-shadow: 0 2px 12px rgba(155,142,196,0.08);">
+          <h3 data-id="61" class="text-base font-semibold text-lavender-700 mb-4">🎯 Focus Trend</h3>
+          <div data-id="62" id="focus-chart" class="space-y-2"></div>
+        </div>
+        <!-- Medication Adherence -->
+        <div data-id="63" class="bg-white rounded-2xl p-5 md:p-6 flex flex-col items-center" style="box-shadow: 0 2px 12px rgba(155,142,196,0.08);">
+          <h3 data-id="64" class="text-base font-semibold text-lavender-700 mb-4">💊 Medication Adherence</h3>
+          <div data-id="65" class="relative w-40 h-40 mb-3">
+            <svg data-id="66" viewBox="0 0 120 120" class="w-full h-full progress-ring">
+              <circle data-id="67" cx="60" cy="60" r="52" fill="none" stroke="#eef5f0" stroke-width="10" />
+              <circle data-id="68" id="adherence-ring" cx="60" cy="60" r="52" fill="none" stroke="#7aab8a" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.73" stroke-dashoffset="326.73" style="transition: stroke-dashoffset 0.8s ease;" />
+            </svg>
+            <div data-id="69" class="absolute inset-0 flex items-center justify-center">
+              <span data-id="70" id="adherence-pct" class="text-2xl font-bold text-sage-600">0%</span>
+            </div>
+          </div>
+          <p data-id="71" class="text-sm text-sage-600" id="adherence-label">0 of 0 doses taken</p>
+        </div>
+        <!-- Weekly Reflection -->
+        <div data-id="72" class="bg-white rounded-2xl p-5 md:p-6" style="box-shadow: 0 2px 12px rgba(155,142,196,0.08);">
+          <h3 data-id="73" class="text-base font-semibold text-lavender-700 mb-4">📝 Weekly Reflection</h3>
+          <label data-id="74" class="text-sm font-medium text-lavender-600 mb-1 block">Overall this week...</label>
+          <textarea data-id="75" id="weekly-overall" class="compact-input mb-4" rows="3" placeholder="How did this week go?"></textarea>
+          <label data-id="76" class="text-sm font-medium text-lavender-600 mb-1 block">Goals for next week...</label>
+          <textarea data-id="77" id="weekly-goals" class="compact-input" rows="3" placeholder="What do you want to focus on?"></textarea>
+        </div>
+        <!-- Export -->
+        <div data-id="78" class="text-center py-4">
+          <p data-id="79" class="text-sm text-lavender-400">🖨️ Use your browser's print function (Ctrl+P) to save this summary.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer data-id="80" class="py-6 mt-auto text-center">
+    <p data-id="81" class="text-xs text-lavender-400">Made by Copilot</p>
+  </footer>
+
+  <script>
+    // ── Lucide icons ──
+    if (typeof lucide !== "undefined" && typeof lucide.createIcons === "function") {
+      lucide.createIcons();
+    }
+
+    // ── Constants ──
+    const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const MOODS = [{e:'😔',l:'Very Low',v:1},{e:'😕',l:'Low',v:2},{e:'😐',l:'Neutral',v:3},{e:'🙂',l:'Good',v:4},{e:'😄',l:'Great',v:5}];
+    const HOURS = [];
+    for (let h = 7; h <= 21; h++) {
+      const ampm = h < 12 ? 'AM' : 'PM';
+      const hr = h > 12 ? h - 12 : h;
+      HOURS.push({ label: `${hr} ${ampm}`, key: h });
+    }
+    const TODAY = new Date(); // always the real current date — supports any year (2026, 2027, 2028, 2029, 2030, ...)
+    TODAY.setHours(0, 0, 0, 0);
+
+    // ── State ──
+    let currentWeekStart = getWeekStart(TODAY);
+    let activeTab = 'planner';
+
+    // ── Storage: AppSDK if present (sandbox preview), otherwise localStorage (installed app) ──
+    const SDK = window.AppSDK;
+    const LS_PREFIX = 'weeklyplanner:';
+
+    async function loadData(key, def) {
+      if (SDK) {
+        try {
+          const doc = await SDK.get('weeklyplanner', key);
+          return doc && doc.data ? doc.data : def;
+        } catch {
+          return def;
+        }
+      }
+      try {
+        const raw = localStorage.getItem(LS_PREFIX + key);
+        return raw ? JSON.parse(raw) : def;
+      } catch (e) {
+        console.error('Load failed:', e);
+        return def;
+      }
+    }
+
+    async function saveData(key, val) {
+      if (SDK) {
+        try {
+          await SDK.upsert('weeklyplanner', key, val);
+        } catch (e) {
+          console.error('Save failed:', e);
+        }
+        return;
+      }
+      try {
+        localStorage.setItem(LS_PREFIX + key, JSON.stringify(val));
+      } catch (e) {
+        console.error('Save failed:', e);
+      }
+    }
+
+    function getWeekStart(d) {
+      const dt = new Date(d);
+      dt.setHours(0,0,0,0);
+      const day = dt.getDay();
+      dt.setDate(dt.getDate() - day);
+      return dt;
+    }
+    function getWeekKey(ws) {
+      const thu = new Date(ws);
+      thu.setDate(thu.getDate() + 3);
+      const yr = thu.getFullYear();
+      const jan1 = new Date(yr, 0, 1);
+      const days = Math.floor((thu - jan1) / 86400000);
+      const wn = Math.ceil((days + jan1.getDay() + 1) / 7);
+      return `${yr}-W${String(wn).padStart(2, '0')}`;
+    }
+    function getWeekDates(ws) {
+      const dates = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(ws);
+        d.setDate(d.getDate() + i);
+        dates.push(d);
+      }
+      return dates;
+    }
+    function isToday(d) {
+      return d.getFullYear() === TODAY.getFullYear() && d.getMonth() === TODAY.getMonth() && d.getDate() === TODAY.getDate();
+    }
+    function fmtDate(d) {
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+    function fmtISO(d) {
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    // ── Debounce ──
+    const debounceTimers = {};
+    function debounceSave(storageKey, dataFn, delay = 500) {
+      clearTimeout(debounceTimers[storageKey]);
+      debounceTimers[storageKey] = setTimeout(async () => {
+        const val = typeof dataFn === 'function' ? dataFn() : dataFn;
+        await saveData(storageKey, val);
+      }, delay);
+    }
+
+    // ── Week Label ──
+    function updateWeekLabel() {
+      const dates = getWeekDates(currentWeekStart);
+      const s = dates[0], e = dates[6];
+      const label = `${s.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${e.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
+      document.getElementById('week-label').textContent = label;
+    }
+
+    // ── TABS ──
+    function switchTab(tab) {
+      activeTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        const isActive = b.dataset.tab === tab;
+        b.classList.toggle('bg-lavender-100', isActive);
+        b.classList.toggle('text-lavender-700', isActive);
+        b.classList.toggle('text-gray-500', !isActive);
+      });
+      document.querySelectorAll('.tab-content').forEach(s => {
+        s.classList.remove('active');
+      });
+      const el = document.getElementById('tab-' + tab);
+      if (el) {
+        el.classList.add('active');
+        el.classList.add('fade-in');
+        setTimeout(() => el.classList.remove('fade-in'), 400);
+      }
+      if (tab === 'planner') renderPlanner();
+      if (tab === 'mood') renderMood();
+      if (tab === 'meds') renderMeds();
+      if (tab === 'journal') renderJournal();
+      if (tab === 'summary') renderSummary();
+    }
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    // ── TAB 1: PLANNER ──
+    function plannerKey() { return 'planner_' + getWeekKey(currentWeekStart); }
+
+    async function getPlannerData() {
+      return await loadData(plannerKey(), {});
+    }
+
+    async function renderPlanner() {
+      const container = document.getElementById('planner-cols');
+      container.innerHTML = '';
+      const dates = getWeekDates(currentWeekStart);
+      const data = await getPlannerData();
+
+      dates.forEach((dt, di) => {
+        const dk = fmtISO(dt);
+        const dd = data[dk] || { priorities: ['','',''], schedule: {}, notes: '' };
+        const today = isToday(dt);
+
+        const col = document.createElement('div');
+        col.className = `day-border-${di} rounded-2xl p-3 ${today ? 'bg-lavender-100/60 ring-2 ring-lavender-400/30' : 'bg-white'} flex flex-col gap-2`;
+        col.style.boxShadow = '0 1px 8px rgba(155,142,196,0.06)';
+        col.style.minWidth = '180px';
+
+        col.innerHTML = `
+          <div class="text-center pb-2 border-b ${today ? 'border-lavender-300/40' : 'border-cream-300'}">
+            <div class="text-xs font-semibold uppercase tracking-wider ${today ? 'text-lavender-600' : 'text-lavender-400'}">${DAYS[di]}</div>
+            <div class="text-sm font-bold ${today ? 'text-lavender-700' : 'text-lavender-600'}">${fmtDate(dt)} ${today ? '⭐' : ''}</div>
+          </div>
+          <div>
+            <div class="text-xs font-semibold text-peach-600 mb-1 uppercase tracking-wider">Top 3 Priorities</div>
+            ${[0,1,2].map(i => `<input type="text" class="compact-input mb-1 text-xs" placeholder="${i+1}." value="${escHTML(dd.priorities[i]||'')}" data-dk="${dk}" data-field="p" data-idx="${i}" />`).join('')}
+          </div>
+          <div>
+            <div class="text-xs font-semibold text-sage-600 mb-1 uppercase tracking-wider">Schedule</div>
+            <div class="space-y-0.5 max-h-[320px] overflow-y-auto pr-1">
+              ${HOURS.map(h => `
+                <div class="flex items-center gap-1">
+                  <span class="text-[10px] text-lavender-400 w-10 shrink-0 text-right">${h.label}</span>
+                  <input type="text" class="compact-input text-xs flex-1" placeholder="—" value="${escHTML((dd.schedule && dd.schedule[h.key])||'')}" data-dk="${dk}" data-field="s" data-hour="${h.key}" />
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          <div>
+            <div class="text-xs font-semibold text-lavender-500 mb-1 uppercase tracking-wider">Notes</div>
+            <textarea class="compact-input text-xs" rows="2" placeholder="Notes..." data-dk="${dk}" data-field="n">${escHTML(dd.notes||'')}</textarea>
+          </div>
+        `;
+        container.appendChild(col);
+      });
+
+      container.querySelectorAll('input[data-field], textarea[data-field]').forEach(inp => {
+        inp.addEventListener('input', () => {
+          debounceSave(plannerKey(), () => collectPlannerData());
+        });
+      });
+    }
+
+    function collectPlannerData() {
+      const data = {};
+      const container = document.getElementById('planner-cols');
+      container.querySelectorAll('input[data-field="p"]').forEach(inp => {
+        const dk = inp.dataset.dk, idx = parseInt(inp.dataset.idx);
+        if (!data[dk]) data[dk] = { priorities: ['','',''], schedule: {}, notes: '' };
+        data[dk].priorities[idx] = inp.value;
+      });
+      container.querySelectorAll('input[data-field="s"]').forEach(inp => {
+        const dk = inp.dataset.dk, hr = inp.dataset.hour;
+        if (!data[dk]) data[dk] = { priorities: ['','',''], schedule: {}, notes: '' };
+        data[dk].schedule[hr] = inp.value;
+      });
+      container.querySelectorAll('textarea[data-field="n"]').forEach(ta => {
+        const dk = ta.dataset.dk;
+        if (!data[dk]) data[dk] = { priorities: ['','',''], schedule: {}, notes: '' };
+        data[dk].notes = ta.value;
+      });
+      return data;
+    }
+
+    function escHTML(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    // ── TAB 2: MOOD ──
+    function moodKey() { return 'mood_' + getWeekKey(currentWeekStart); }
+    async function getMoodData() { return await loadData(moodKey(), {}); }
+
+    async function renderMood() {
+      const container = document.getElementById('mood-cards');
+      container.innerHTML = '';
+      const dates = getWeekDates(currentWeekStart);
+      const data = await getMoodData();
+
+      dates.forEach((dt, di) => {
+        const dk = fmtISO(dt);
+        const dd = data[dk] || { mood: 0, focus: 0, energy: 5, wentWell: '', challenging: '', grateful: '' };
+        const today = isToday(dt);
+        const collapsed = !today;
+
+        const card = document.createElement('div');
+        card.className = `bg-white rounded-2xl overflow-hidden transition-all ${today ? 'ring-2 ring-lavender-400/30' : ''}`;
+        card.style.boxShadow = '0 2px 12px rgba(155,142,196,0.08)';
+
+        const moodEmoji = dd.mood > 0 ? MOODS[dd.mood - 1].e : '–';
+        const focusStars = dd.focus > 0 ? '⭐'.repeat(dd.focus) : '–';
+
+        card.innerHTML = `
+          <div class="mood-header flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-lavender-100/40 transition ${today ? 'bg-lavender-100/40' : ''}">
+            <div class="flex items-center gap-3">
+              <span class="text-xs font-semibold uppercase tracking-wider ${today ? 'text-lavender-600' : 'text-lavender-400'}">${DAYS[di]}</span>
+              <span class="text-sm font-bold ${today ? 'text-lavender-700' : 'text-lavender-600'}">${fmtDate(dt)} ${today ? '⭐' : ''}</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="text-sm">${moodEmoji}</span>
+              <span class="text-xs text-lavender-400">${focusStars}</span>
+              <i data-lucide="${collapsed ? 'chevron-down' : 'chevron-up'}" class="w-4 h-4 text-lavender-400 mood-chevron"></i>
+            </div>
+          </div>
+          <div class="mood-body ${collapsed ? 'hidden' : ''} px-5 pb-5 pt-2 space-y-4">
+            <div>
+              <label class="text-xs font-semibold text-peach-600 uppercase tracking-wider mb-2 block">Mood Tracker</label>
+              <div class="flex gap-2 flex-wrap">
+                ${MOODS.map(m => `
+                  <button class="mood-btn w-12 h-12 rounded-xl text-xl flex items-center justify-center bg-cream-100 hover:bg-lavender-100 ${dd.mood === m.v ? 'selected' : ''}" data-dk="${dk}" data-mood="${m.v}" title="${m.l}">${m.e}</button>
+                `).join('')}
+              </div>
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-sage-600 uppercase tracking-wider mb-2 block">Focus Level</label>
+              <div class="flex gap-1">
+                ${[1,2,3,4,5].map(s => `
+                  <button class="star-btn text-2xl" data-dk="${dk}" data-star="${s}">${s <= dd.focus ? '⭐' : '☆'}</button>
+                `).join('')}
+              </div>
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-lavender-600 uppercase tracking-wider mb-2 block">Energy Level: <span class="energy-val text-base font-bold">${dd.energy}</span></label>
+              <input type="range" min="1" max="10" value="${dd.energy}" class="w-full energy-slider" data-dk="${dk}" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-sage-600 uppercase tracking-wider mb-1 block">What went well today?</label>
+              <textarea class="compact-input text-sm" rows="2" placeholder="Celebrate your wins..." data-dk="${dk}" data-reflect="wentWell">${escHTML(dd.wentWell||'')}</textarea>
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-peach-600 uppercase tracking-wider mb-1 block">What was challenging?</label>
+              <textarea class="compact-input text-sm" rows="2" placeholder="It's okay to acknowledge challenges..." data-dk="${dk}" data-reflect="challenging">${escHTML(dd.challenging||'')}</textarea>
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-lavender-600 uppercase tracking-wider mb-1 block">🙏 Today I'm grateful for...</label>
+              <input type="text" class="compact-input text-sm" placeholder="Something that made you smile..." value="${escHTML(dd.grateful||'')}" data-dk="${dk}" data-reflect="grateful" />
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      if (typeof lucide !== "undefined" && typeof lucide.createIcons === "function") {
+        lucide.createIcons();
+      }
+
+      // Events: toggle cards
+      container.querySelectorAll('.mood-header').forEach(hdr => {
+        hdr.addEventListener('click', () => {
+          const body = hdr.nextElementSibling;
+          const chev = hdr.querySelector('.mood-chevron');
+          body.classList.toggle('hidden');
+          if (chev) {
+            chev.setAttribute('data-lucide', body.classList.contains('hidden') ? 'chevron-down' : 'chevron-up');
+            if (typeof lucide !== "undefined") lucide.createIcons();
+          }
+        });
+      });
+
+      // Mood buttons
+      container.querySelectorAll('.mood-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const dk = btn.dataset.dk, val = parseInt(btn.dataset.mood);
+          const data = await getMoodData();
+          if (!data[dk]) data[dk] = { mood:0, focus:0, energy:5, wentWell:'', challenging:'', grateful:'' };
+          data[dk].mood = val;
+          await saveData(moodKey(), data);
+          btn.closest('.mood-body').querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+        });
+      });
+
+      // Star buttons
+      container.querySelectorAll('.star-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const dk = btn.dataset.dk, val = parseInt(btn.dataset.star);
+          const data = await getMoodData();
+          if (!data[dk]) data[dk] = { mood:0, focus:0, energy:5, wentWell:'', challenging:'', grateful:'' };
+          data[dk].focus = val;
+          await saveData(moodKey(), data);
+          const parent = btn.parentElement;
+          parent.querySelectorAll('.star-btn').forEach(s => {
+            s.textContent = parseInt(s.dataset.star) <= val ? '⭐' : '☆';
+          });
+        });
+      });
+
+      // Energy sliders
+      container.querySelectorAll('.energy-slider').forEach(slider => {
+        slider.addEventListener('input', async () => {
+          const dk = slider.dataset.dk;
+          slider.closest('.mood-body').querySelector('.energy-val').textContent = slider.value;
+          const data = await getMoodData();
+          if (!data[dk]) data[dk] = { mood:0, focus:0, energy:5, wentWell:'', challenging:'', grateful:'' };
+          data[dk].energy = parseInt(slider.value);
+          await saveData(moodKey(), data);
+        });
+      });
+
+      // Text fields
+      container.querySelectorAll('[data-reflect]').forEach(inp => {
+        inp.addEventListener('input', async () => {
+          const dk = inp.dataset.dk, field = inp.dataset.reflect;
+          const data = await getMoodData();
+          if (!data[dk]) data[dk] = { mood:0, focus:0, energy:5, wentWell:'', challenging:'', grateful:'' };
+          data[dk][field] = inp.value;
+          debounceSave(moodKey(), () => data);
+        });
+      });
+    }
+
+    // ── TAB 3: MEDICATIONS ──
+    function medsListKey() { return 'meds_list'; }
+    function medsCheckKey() { return 'meds_checks_' + getWeekKey(currentWeekStart); }
+    function medsNotesKey() { return 'meds_notes_' + getWeekKey(currentWeekStart); }
+
+    async function getMedsList() { return await loadData(medsListKey(), []); }
+    async function getMedsChecks() { return await loadData(medsCheckKey(), {}); }
+    async function getMedsNotes() { return await loadData(medsNotesKey(), {}); }
+
+    async function renderMeds() {
+      const meds = await getMedsList();
+      const checks = await getMedsChecks();
+      const notes = await getMedsNotes();
+      const dates = getWeekDates(currentWeekStart);
+      const area = document.getElementById('med-grid-area');
+
+      // Today's progress
+      const todayKey = fmtISO(TODAY);
+      let todayTaken = 0, todayTotal = meds.length;
+      meds.forEach(m => { if (checks[m.id] && checks[m.id][todayKey]) todayTaken++; });
+      document.getElementById('med-today-text').textContent = `${todayTaken} of ${todayTotal} medications taken today`;
+      const pct = todayTotal > 0 ? Math.round(todayTaken / todayTotal * 100) : 0;
+      document.getElementById('med-today-progress').style.width = pct + '%';
+
+      if (meds.length === 0) {
+        area.innerHTML = '<p class="text-center text-lavender-400 text-sm py-8">No medications added yet. Add one above to start tracking! 💊</p>';
+        return;
+      }
+
+      let html = '<table class="w-full text-sm"><thead><tr>';
+      html += '<th class="text-left py-2 px-2 text-xs font-semibold text-lavender-600 uppercase tracking-wider min-w-[140px]">Medication</th>';
+      dates.forEach(dt => {
+        const t = isToday(dt);
+        html += `<th class="text-center py-2 px-1 text-xs font-semibold uppercase tracking-wider ${t ? 'text-lavender-700' : 'text-lavender-400'} min-w-[50px]">${DAYS[dt.getDay()]}<br/><span class="text-[10px] normal-case font-normal">${fmtDate(dt)}</span></th>`;
+      });
+      html += '<th class="text-left py-2 px-2 text-xs font-semibold text-lavender-600 uppercase tracking-wider min-w-[120px]">Notes</th>';
+      html += '</tr></thead><tbody>';
+
+      meds.forEach(m => {
+        html += '<tr class="border-t border-cream-200">';
+        html += `<td class="py-3 px-2">
+          <div class="font-medium text-lavender-700">${escHTML(m.name)}</div>
+          <div class="text-xs text-lavender-400">${escHTML(m.dosage)} · ${escHTML(m.freq)} · ${escHTML(m.time)}</div>
+        </td>`;
+        dates.forEach(dt => {
+          const dk = fmtISO(dt);
+          const checked = checks[m.id] && checks[m.id][dk];
+          html += `<td class="text-center py-3 px-1">
+            <div class="check-cell mx-auto ${checked ? 'checked' : ''}" data-med="${m.id}" data-day="${dk}">
+              ${checked ? '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''}
+            </div>
+          </td>`;
+        });
+        html += `<td class="py-3 px-2"><input type="text" class="compact-input text-xs" placeholder="Side effects..." value="${escHTML(notes[m.id]||'')}" data-med-note="${m.id}" /></td>`;
+        html += '</tr>';
+        html += `<tr><td colspan="${dates.length + 2}" class="pb-2 px-2"><button class="text-xs text-peach-500 hover:text-peach-600 transition del-med-btn" data-del="${m.id}">Remove</button></td></tr>`;
+      });
+
+      html += '</tbody></table>';
+      area.innerHTML = html;
+    }
+
+    // ── EVENT DELEGATION for Medication Tab ──
+    // This uses document-level event delegation so it works regardless of
+    // whether the tab content is visible or has been re-rendered.
+    document.addEventListener('click', async function(e) {
+
+      // ── Add Medication Button ──
+      if (e.target.matches('#add-med-btn') || e.target.closest('#add-med-btn')) {
+        e.preventDefault();
+
+        // Read form values fresh at click time
+        const nameInput = document.getElementById('med-name');
+        const dosageInput = document.getElementById('med-dosage');
+        const freqSelect = document.getElementById('med-freq');
+        const timeSelect = document.getElementById('med-time');
+        const errorEl = document.getElementById('med-name-error');
+
+        const name = nameInput.value.trim();
+        const dosage = dosageInput.value.trim();
+        const freq = freqSelect.value;
+        const time = timeSelect.value;
+
+        // Validate medication name
+        if (!name) {
+          nameInput.classList.add('input-error');
+          errorEl.classList.add('visible');
+          nameInput.focus();
+          return;
+        }
+
+        // Clear any previous error state
+        nameInput.classList.remove('input-error');
+        errorEl.classList.remove('visible');
+
+        // Save to AppSDK
+        const meds = await getMedsList();
+        meds.push({ id: 'med_' + Date.now(), name, dosage, freq, time });
+        await saveData(medsListKey(), meds);
+
+        // Clear all form fields
+        nameInput.value = '';
+        dosageInput.value = '';
+        freqSelect.selectedIndex = 0;
+        timeSelect.selectedIndex = 0;
+
+        // Re-render the medication list and grid
+        await renderMeds();
+        return;
+      }
+
+      // ── Medication Check Cell (checkbox toggle) ──
+      const checkCell = e.target.closest('.check-cell[data-med][data-day]');
+      if (checkCell) {
+        const mid = checkCell.dataset.med;
+        const day = checkCell.dataset.day;
+        const checks = await getMedsChecks();
+        if (!checks[mid]) checks[mid] = {};
+        checks[mid][day] = !checks[mid][day];
+        await saveData(medsCheckKey(), checks);
+        // Re-render to update grid and today bar immediately
+        await renderMeds();
+        return;
+      }
+
+      // ── Delete Medication Button ──
+      const delBtn = e.target.closest('.del-med-btn[data-del]');
+      if (delBtn) {
+        const mid = delBtn.dataset.del;
+        const meds = (await getMedsList()).filter(m => m.id !== mid);
+        await saveData(medsListKey(), meds);
+        await renderMeds();
+        return;
+      }
+    });
+
+    // ── Event delegation for medication notes ──
+    document.addEventListener('input', function(e) {
+      // Clear med-name error on typing
+      if (e.target.matches('#med-name')) {
+        const errorEl = document.getElementById('med-name-error');
+        if (e.target.value.trim()) {
+          e.target.classList.remove('input-error');
+          errorEl.classList.remove('visible');
+        }
+      }
+
+      // Medication note fields
+      const noteInput = e.target.closest('[data-med-note]');
+      if (noteInput) {
+        const mid = noteInput.dataset.medNote;
+        debounceSave(medsNotesKey(), async () => {
+          const notes = await getMedsNotes();
+          notes[mid] = noteInput.value;
+          // Save directly since debounceSave expects sync return — handle manually
+          await saveData(medsNotesKey(), notes);
+          return notes;
+        });
+      }
+    });
+
+    // Fix: override debounceSave for async data functions used in med notes
+    // We handle med notes saving inline via the input delegation above,
+    // but let's make a proper async-aware debounce for med notes:
+    const medNoteTimers = {};
+    document.getElementById('med-grid-area').addEventListener('input', function(e) {
+      const noteInput = e.target.closest('[data-med-note]');
+      if (noteInput) {
+        const mid = noteInput.dataset.medNote;
+        const key = medsNotesKey();
+        clearTimeout(medNoteTimers[mid]);
+        medNoteTimers[mid] = setTimeout(async () => {
+          const notes = await getMedsNotes();
+          notes[mid] = noteInput.value;
+          await saveData(key, notes);
+        }, 500);
+      }
+    });
+
+    // ── TAB 4: SUMMARY ──
+    function summaryReflectionKey() { return 'summary_' + getWeekKey(currentWeekStart); }
+
+    async function renderSummary() {
+      const dates = getWeekDates(currentWeekStart);
+      const moodData = await getMoodData();
+      const meds = await getMedsList();
+      const checks = await getMedsChecks();
+      const reflections = await loadData(summaryReflectionKey(), { overall: '', goals: '' });
+
+      // Mood chart
+      const moodChart = document.getElementById('mood-chart');
+      const moodColors = ['#f3f0fa','#d4c8ea','#b8a5d9','#9b8ec4','#7d6daa'];
+      let moodHtml = '';
+      dates.forEach(dt => {
+        const dk = fmtISO(dt);
+        const dd = moodData[dk];
+        const val = dd ? dd.mood : 0;
+        const pct = val > 0 ? (val / 5 * 100) : 0;
+        const emoji = val > 0 ? MOODS[val-1].e : '–';
+        moodHtml += `
+          <div class="flex items-center gap-3">
+            <span class="w-10 text-xs font-medium text-lavender-500 text-right">${DAYS[dt.getDay()]}</span>
+            <div class="flex-1 h-7 bg-cream-200 rounded-lg overflow-hidden relative">
+              <div class="h-full rounded-lg transition-all" style="width:${pct}%; background:${val > 0 ? moodColors[val-1] : 'transparent'}"></div>
+              <span class="absolute right-2 top-1/2 -translate-y-1/2 text-sm">${emoji}</span>
+            </div>
+          </div>`;
+      });
+      moodChart.innerHTML = moodHtml;
+
+      // Focus chart
+      const focusChart = document.getElementById('focus-chart');
+      let focusHtml = '';
+      dates.forEach(dt => {
+        const dk = fmtISO(dt);
+        const dd = moodData[dk];
+        const val = dd ? dd.focus : 0;
+        const pct = val > 0 ? (val / 5 * 100) : 0;
+        focusHtml += `
+          <div class="flex items-center gap-3">
+            <span class="w-10 text-xs font-medium text-sage-500 text-right">${DAYS[dt.getDay()]}</span>
+            <div class="flex-1 h-7 bg-sage-100 rounded-lg overflow-hidden relative">
+              <div class="h-full rounded-lg bg-sage-400 transition-all" style="width:${pct}%"></div>
+              <span class="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium text-sage-700">${val > 0 ? '⭐'.repeat(val) : '–'}</span>
+            </div>
+          </div>`;
+      });
+      focusChart.innerHTML = focusHtml;
+
+      // Medication adherence
+      let totalChecks = 0, totalPossible = meds.length * 7;
+      meds.forEach(m => {
+        dates.forEach(dt => {
+          if (checks[m.id] && checks[m.id][fmtISO(dt)]) totalChecks++;
+        });
+      });
+      const adherence = totalPossible > 0 ? Math.round(totalChecks / totalPossible * 100) : 0;
+      const circumference = 2 * Math.PI * 52;
+      const offset = circumference - (adherence / 100 * circumference);
+      document.getElementById('adherence-ring').style.strokeDashoffset = offset;
+      document.getElementById('adherence-pct').textContent = adherence + '%';
+      document.getElementById('adherence-label').textContent = `${totalChecks} of ${totalPossible} doses taken`;
+
+      // Streak
+      let streak = 0;
+      const checkDate = new Date(TODAY);
+      while (true) {
+        const dk = fmtISO(checkDate);
+        const weekStart = getWeekStart(checkDate);
+        const wk = getWeekKey(weekStart);
+        const weekMood = await loadData('mood_' + wk, {});
+        if (weekMood[dk] && weekMood[dk].mood > 0) {
+          streak++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+          break;
+        }
+        if (streak > 365) break;
+      }
+      document.getElementById('streak-count').textContent = streak + (streak === 1 ? ' day' : ' days');
+
+      // Weekly reflection
+      document.getElementById('weekly-overall').value = reflections.overall || '';
+      document.getElementById('weekly-goals').value = reflections.goals || '';
+    }
+
+    // Reflection save events
+    document.getElementById('weekly-overall').addEventListener('input', async function() {
+      const data = await loadData(summaryReflectionKey(), { overall: '', goals: '' });
+      data.overall = this.value;
+      debounceSave(summaryReflectionKey(), () => data);
+    });
+    document.getElementById('weekly-goals').addEventListener('input', async function() {
+      const data = await loadData(summaryReflectionKey(), { overall: '', goals: '' });
+      data.goals = this.value;
+      debounceSave(summaryReflectionKey(), () => data);
+    });
+
+    // ── TAB: PERSONAL JOURNAL ──
+    // Entries are stored as one flat list so they work across any year/week.
+    function journalKey() { return 'journal_entries'; }
+    async function getJournalEntries() { return await loadData(journalKey(), []); }
+
+    let journalEditId = null;
+    let journalSearchTerm = '';
+
+    function fmtDateTime(iso) {
+      const d = new Date(iso);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
+        ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    }
+
+    async function renderJournal() {
+      const entries = (await getJournalEntries()).slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const list = document.getElementById('journal-list');
+      const term = journalSearchTerm.trim().toLowerCase();
+      const filtered = term
+        ? entries.filter(e => (e.title || '').toLowerCase().includes(term) || (e.body || '').toLowerCase().includes(term))
+        : entries;
+
+      if (filtered.length === 0) {
+        list.innerHTML = `<p class="text-center text-lavender-400 text-sm py-8">${term ? 'No entries match your search.' : 'No journal entries yet. Write your first one above! 📓'}</p>`;
+        return;
+      }
+
+      list.innerHTML = filtered.map(e => `
+        <div class="p-4 rounded-xl bg-cream-100 border border-cream-300">
+          <div class="flex items-start justify-between gap-2 mb-1">
+            <div class="font-semibold text-lavender-700 text-sm">${escHTML(e.title || 'Untitled entry')}</div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button class="text-xs text-lavender-500 hover:text-lavender-700 transition journal-edit-btn" data-id="${e.id}">Edit</button>
+              <button class="text-xs text-peach-500 hover:text-peach-600 transition journal-del-btn" data-id="${e.id}">Delete</button>
+            </div>
+          </div>
+          <div class="text-[11px] text-lavender-400 mb-2">${fmtDateTime(e.createdAt)}</div>
+          <p class="text-sm text-gray-700 whitespace-pre-wrap">${escHTML(e.body || '')}</p>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('journal-save-btn').addEventListener('click', async () => {
+      const titleInput = document.getElementById('journal-title');
+      const bodyInput = document.getElementById('journal-body');
+      const body = bodyInput.value.trim();
+      if (!body) { bodyInput.focus(); return; }
+
+      const entries = await getJournalEntries();
+      if (journalEditId) {
+        const entry = entries.find(e => e.id === journalEditId);
+        if (entry) { entry.title = titleInput.value.trim(); entry.body = body; entry.updatedAt = new Date().toISOString(); }
+      } else {
+        entries.push({ id: 'j_' + Date.now(), title: titleInput.value.trim(), body, createdAt: new Date().toISOString() });
+      }
+      await saveData(journalKey(), entries);
+
+      titleInput.value = '';
+      bodyInput.value = '';
+      journalEditId = null;
+      document.getElementById('journal-cancel-btn').classList.add('hidden');
+      document.getElementById('journal-save-btn').textContent = 'Save Entry';
+      await renderJournal();
+    });
+
+    document.getElementById('journal-cancel-btn').addEventListener('click', () => {
+      journalEditId = null;
+      document.getElementById('journal-title').value = '';
+      document.getElementById('journal-body').value = '';
+      document.getElementById('journal-cancel-btn').classList.add('hidden');
+      document.getElementById('journal-save-btn').textContent = 'Save Entry';
+    });
+
+    document.getElementById('journal-list').addEventListener('click', async (e) => {
+      const editBtn = e.target.closest('.journal-edit-btn');
+      const delBtn = e.target.closest('.journal-del-btn');
+      if (editBtn) {
+        const entries = await getJournalEntries();
+        const entry = entries.find(x => x.id === editBtn.dataset.id);
+        if (entry) {
+          journalEditId = entry.id;
+          document.getElementById('journal-title').value = entry.title || '';
+          document.getElementById('journal-body').value = entry.body || '';
+          document.getElementById('journal-save-btn').textContent = 'Update Entry';
+          document.getElementById('journal-cancel-btn').classList.remove('hidden');
+          document.getElementById('journal-body').focus();
+        }
+      } else if (delBtn) {
+        if (!confirm('Delete this journal entry? This cannot be undone.')) return;
+        const entries = (await getJournalEntries()).filter(x => x.id !== delBtn.dataset.id);
+        await saveData(journalKey(), entries);
+        await renderJournal();
+      }
+    });
+
+    document.getElementById('journal-search').addEventListener('input', (e) => {
+      journalSearchTerm = e.target.value;
+      renderJournal();
+    });
+
+    // ── WEEK NAVIGATION ──
+    document.getElementById('prev-week').addEventListener('click', () => {
+      currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+      updateWeekLabel();
+      switchTab(activeTab);
+    });
+    document.getElementById('next-week').addEventListener('click', () => {
+      currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+      updateWeekLabel();
+      switchTab(activeTab);
+    });
+
+    // ── JUMP TO DATE (supports any year — 2026, 2027, 2028, 2029, 2030, and beyond) ──
+    const jumpDateInput = document.getElementById('jump-date');
+    jumpDateInput.value = fmtISO(TODAY);
+    jumpDateInput.min = '2020-01-01';
+    jumpDateInput.max = '2035-12-31';
+    jumpDateInput.addEventListener('change', () => {
+      if (!jumpDateInput.value) return;
+      const [y, m, d] = jumpDateInput.value.split('-').map(Number);
+      currentWeekStart = getWeekStart(new Date(y, m - 1, d));
+      updateWeekLabel();
+      switchTab(activeTab);
+    });
+    document.getElementById('jump-today-btn').addEventListener('click', () => {
+      currentWeekStart = getWeekStart(TODAY);
+      jumpDateInput.value = fmtISO(TODAY);
+      updateWeekLabel();
+      switchTab(activeTab);
+    });
+
+    // ── DATA MENU (backup / restore / calendar export) ──
+    document.getElementById('data-menu-btn').addEventListener('click', () => {
+      document.getElementById('data-menu').classList.toggle('hidden');
+    });
+
+    // Export full app data as a downloadable JSON backup
+    document.getElementById('export-json-btn').addEventListener('click', async () => {
+      const backup = {};
+      if (SDK) {
+        alert('Backup export works best in the installed app. Please use it there.');
+        return;
+      }
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(LS_PREFIX)) backup[k.slice(LS_PREFIX.length)] = JSON.parse(localStorage.getItem(k));
+      }
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `weekly-planner-backup-${fmtISO(TODAY)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Restore from a JSON backup file
+    document.getElementById('import-json-input').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const data = JSON.parse(reader.result);
+          if (!confirm('This will overwrite your current data with the backup. Continue?')) return;
+          for (const key of Object.keys(data)) {
+            localStorage.setItem(LS_PREFIX + key, JSON.stringify(data[key]));
+          }
+          alert('Backup restored! Reloading...');
+          location.reload();
+        } catch (err) {
+          alert('Could not read that backup file. Please choose a valid export.');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+
+    // Export the current week's planner schedule + top priorities as an .ics calendar file
+    document.getElementById('export-ics-btn').addEventListener('click', async () => {
+      const dates = getWeekDates(currentWeekStart);
+      const data = await getPlannerData();
+      const pad = n => String(n).padStart(2, '0');
+      const toICSDate = (d, h) => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(h)}0000`;
+
+      let events = '';
+      dates.forEach(dt => {
+        const dk = fmtISO(dt);
+        const dd = data[dk];
+        if (!dd) return;
+        (dd.priorities || []).filter(p => p && p.trim()).forEach((p, idx) => {
+          events += [
+            'BEGIN:VEVENT',
+            `UID:priority-${dk}-${idx}@weeklyplanner`,
+            `DTSTAMP:${toICSDate(new Date(), 0)}Z`,
+            `DTSTART;VALUE=DATE:${dk.replace(/-/g,'')}`,
+            `SUMMARY:${escapeICS('Priority: ' + p)}`,
+            'END:VEVENT',
+            ''
+          ].join('\r\n');
+        });
+        Object.entries(dd.schedule || {}).forEach(([hour, text]) => {
+          if (!text || !text.trim()) return;
+          const h = parseInt(hour);
+          const start = toICSDate(dt, h);
+          const end = toICSDate(dt, h + 1);
+          events += [
+            'BEGIN:VEVENT',
+            `UID:schedule-${dk}-${hour}@weeklyplanner`,
+            `DTSTAMP:${toICSDate(new Date(), 0)}Z`,
+            `DTSTART:${start}00`,
+            `DTEND:${end}00`,
+            `SUMMARY:${escapeICS(text)}`,
+            'END:VEVENT',
+            ''
+          ].join('\r\n');
+        });
+      });
+
+      if (!events) { alert('No scheduled items or priorities found for this week to export.'); return; }
+
+      const ics = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Weekly Planner//EN',
+        'CALSCALE:GREGORIAN',
+        events.trim(),
+        'END:VCALENDAR',
+        ''
+      ].join('\r\n');
+
+      const blob = new Blob([ics], { type: 'text/calendar' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `weekly-planner-${getWeekKey(currentWeekStart)}.ics`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    function escapeICS(s) {
+      return String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+    }
+
+    // ── PWA: install prompt + service worker ──
+    let deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      document.getElementById('install-btn').classList.remove('hidden');
+    });
+    document.getElementById('install-btn').addEventListener('click', async () => {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      document.getElementById('install-btn').classList.add('hidden');
+    });
+    window.addEventListener('appinstalled', () => {
+      document.getElementById('install-btn').classList.add('hidden');
+    });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err => console.error('SW registration failed:', err));
+      });
+    }
+
+    // ── INIT ──
+    updateWeekLabel();
+    switchTab('planner');
+  </script>
+</body>
+</html>
