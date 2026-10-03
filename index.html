@@ -307,6 +307,9 @@
     <p data-id="81" class="text-xs text-lavender-400">Made by Copilot</p>
   </footer>
 
+  <!-- Save confirmation toast -->
+  <div id="save-toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 px-4 py-2 rounded-xl bg-sage-600 text-white text-sm font-medium shadow-lg opacity-0 pointer-events-none transition-opacity duration-300 z-50">✓ Saved</div>
+
   <script>
     // ── Lucide icons ──
     if (typeof lucide !== "undefined" && typeof lucide.createIcons === "function") {
@@ -355,16 +358,44 @@
       if (SDK) {
         try {
           await SDK.upsert('weeklyplanner', key, val);
+          showSaveToast(true);
         } catch (e) {
           console.error('Save failed:', e);
+          showSaveToast(false);
         }
         return;
       }
       try {
         localStorage.setItem(LS_PREFIX + key, JSON.stringify(val));
+        showSaveToast(true);
       } catch (e) {
+        // This is the #1 cause of "nothing saves" on phones: storage disabled
+        // (private/incognito mode) or full. Surface it instead of failing silently.
         console.error('Save failed:', e);
+        showSaveToast(false, e);
       }
+    }
+
+    let saveToastTimer = null;
+    function showSaveToast(success, err) {
+      const toast = document.getElementById('save-toast');
+      if (!toast) return;
+      clearTimeout(saveToastTimer);
+      if (success) {
+        toast.textContent = '✓ Saved';
+        toast.classList.remove('bg-peach-600');
+        toast.classList.add('bg-sage-600');
+      } else {
+        toast.textContent = '⚠️ Could not save — storage may be full or disabled';
+        toast.classList.remove('bg-sage-600');
+        toast.classList.add('bg-peach-600');
+      }
+      toast.classList.remove('opacity-0');
+      toast.classList.add('opacity-100');
+      saveToastTimer = setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0');
+      }, success ? 1200 : 4000);
     }
 
     function getWeekStart(d) {
@@ -402,15 +433,37 @@
       return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     }
 
-    // ── Debounce ──
+    // ── Debounce (with forced flush on backgrounding — Android/iOS can freeze or kill
+    //    the page within a second of being hidden, so we can't rely on setTimeout alone) ──
+    // group: a unique id per pending save (usually the storage key, or storage key + sub-id
+    //        for records like per-medication notes so concurrent edits don't clobber each other)
+    // dataFn: either a plain value, or an (async) function returning the value to persist at storageKey
     const debounceTimers = {};
-    function debounceSave(storageKey, dataFn, delay = 500) {
-      clearTimeout(debounceTimers[storageKey]);
-      debounceTimers[storageKey] = setTimeout(async () => {
-        const val = typeof dataFn === 'function' ? dataFn() : dataFn;
-        await saveData(storageKey, val);
-      }, delay);
+    const pendingSaves = {}; // group -> { storageKey, dataFn }
+    function debounceSave(group, storageKey, dataFn, delay = 400) {
+      pendingSaves[group] = { storageKey, dataFn };
+      clearTimeout(debounceTimers[group]);
+      debounceTimers[group] = setTimeout(() => { flushOne(group); }, delay);
     }
+    async function flushOne(group) {
+      const entry = pendingSaves[group];
+      if (!entry) return;
+      clearTimeout(debounceTimers[group]);
+      delete debounceTimers[group];
+      delete pendingSaves[group];
+      const val = typeof entry.dataFn === 'function' ? await entry.dataFn() : entry.dataFn;
+      await saveData(entry.storageKey, val);
+    }
+    function flushAllPendingSaves() {
+      Object.keys(pendingSaves).forEach(group => { flushOne(group); });
+    }
+    // Flush immediately whenever the app is backgrounded, locked, or closed —
+    // this is what actually fixes "my data disappeared" on phones.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flushAllPendingSaves();
+    });
+    window.addEventListener('pagehide', flushAllPendingSaves);
+    window.addEventListener('blur', flushAllPendingSaves);
 
     // ── Week Label ──
     function updateWeekLabel() {
@@ -502,7 +555,7 @@
 
       container.querySelectorAll('input[data-field], textarea[data-field]').forEach(inp => {
         inp.addEventListener('input', () => {
-          debounceSave(plannerKey(), () => collectPlannerData());
+          debounceSave(plannerKey(), plannerKey(), () => collectPlannerData());
         });
       });
     }
@@ -667,7 +720,7 @@
           const data = await getMoodData();
           if (!data[dk]) data[dk] = { mood:0, focus:0, energy:5, wentWell:'', challenging:'', grateful:'' };
           data[dk][field] = inp.value;
-          debounceSave(moodKey(), () => data);
+          debounceSave(moodKey() + '_' + dk, moodKey(), () => data);
         });
       });
     }
@@ -737,6 +790,14 @@
     // ── EVENT DELEGATION for Medication Tab ──
     // This uses document-level event delegation so it works regardless of
     // whether the tab content is visible or has been re-rendered.
+    document.addEventListener('keydown', function(e) {
+      // Let Enter in any "add medication" field submit the form, same as tapping the button —
+      // many users expect Enter to save, and won't notice a button below the fold on mobile.
+      if (e.key === 'Enter' && e.target.matches('#med-name, #med-dosage')) {
+        e.preventDefault();
+        document.getElementById('add-med-btn').click();
+      }
+    });
     document.addEventListener('click', async function(e) {
 
       // ── Add Medication Button ──
@@ -819,35 +880,15 @@
         }
       }
 
-      // Medication note fields
+      // Medication note fields — keyed per-medication so concurrent edits don't clobber each other
       const noteInput = e.target.closest('[data-med-note]');
       if (noteInput) {
         const mid = noteInput.dataset.medNote;
-        debounceSave(medsNotesKey(), async () => {
+        debounceSave('medNote_' + medsNotesKey() + '_' + mid, medsNotesKey(), async () => {
           const notes = await getMedsNotes();
           notes[mid] = noteInput.value;
-          // Save directly since debounceSave expects sync return — handle manually
-          await saveData(medsNotesKey(), notes);
           return notes;
         });
-      }
-    });
-
-    // Fix: override debounceSave for async data functions used in med notes
-    // We handle med notes saving inline via the input delegation above,
-    // but let's make a proper async-aware debounce for med notes:
-    const medNoteTimers = {};
-    document.getElementById('med-grid-area').addEventListener('input', function(e) {
-      const noteInput = e.target.closest('[data-med-note]');
-      if (noteInput) {
-        const mid = noteInput.dataset.medNote;
-        const key = medsNotesKey();
-        clearTimeout(medNoteTimers[mid]);
-        medNoteTimers[mid] = setTimeout(async () => {
-          const notes = await getMedsNotes();
-          notes[mid] = noteInput.value;
-          await saveData(key, notes);
-        }, 500);
       }
     });
 
@@ -942,12 +983,12 @@
     document.getElementById('weekly-overall').addEventListener('input', async function() {
       const data = await loadData(summaryReflectionKey(), { overall: '', goals: '' });
       data.overall = this.value;
-      debounceSave(summaryReflectionKey(), () => data);
+      debounceSave(summaryReflectionKey() + '_overall', summaryReflectionKey(), () => data);
     });
     document.getElementById('weekly-goals').addEventListener('input', async function() {
       const data = await loadData(summaryReflectionKey(), { overall: '', goals: '' });
       data.goals = this.value;
-      debounceSave(summaryReflectionKey(), () => data);
+      debounceSave(summaryReflectionKey() + '_goals', summaryReflectionKey(), () => data);
     });
 
     // ── TAB: PERSONAL JOURNAL ──
@@ -1216,6 +1257,28 @@
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').catch(err => console.error('SW registration failed:', err));
       });
+    }
+
+    // ── Storage health check ──
+    // Catches the #1 real-world cause of "nothing saves": the browser/WebView has
+    // site storage blocked or set to clear automatically (common on Android Chrome
+    // and Samsung Internet privacy settings, or private/incognito mode).
+    function checkStorageAvailable() {
+      if (SDK) return true;
+      try {
+        const testKey = LS_PREFIX + '__test__';
+        localStorage.setItem(testKey, '1');
+        localStorage.removeItem(testKey);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+    if (!checkStorageAvailable()) {
+      const banner = document.createElement('div');
+      banner.className = 'bg-peach-200 text-peach-700 text-sm font-medium text-center py-2 px-4';
+      banner.textContent = '⚠️ Storage is blocked in this browser, so nothing you enter will be saved. On Android: open Chrome/Samsung Internet site settings for this app and allow cookies & site data, or turn off "Clear data on exit".';
+      document.body.insertBefore(banner, document.body.firstChild);
     }
 
     // ── INIT ──
