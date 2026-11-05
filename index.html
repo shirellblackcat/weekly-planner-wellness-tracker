@@ -21,6 +21,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           colors: {
@@ -43,6 +44,14 @@
         },
       },
     };
+  </script>
+  <script>
+    // Apply saved theme synchronously (before paint) to avoid a flash of the wrong theme.
+    try {
+      if (localStorage.getItem('weeklyplanner:theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+    } catch (e) { /* localStorage unavailable; default to light */ }
   </script>
   <style>
     :root {
@@ -122,6 +131,26 @@
       .planner-grid { overflow-x: auto; }
       .planner-cols { min-width: 1400px; }
     }
+    /* ── DARK MODE ──
+       Tailwind's CDN build doesn't retroactively apply dark: variants to classes
+       already in the markup, so dark mode is implemented as a targeted override
+       layer keyed off html.dark, rather than rewriting every utility class pair. */
+    html.dark body { background: #1c1725; color: #e8e2f0; }
+    html.dark header.bg-white\/90 { background: rgba(28,23,37,0.92) !important; }
+    html.dark .bg-white { background: #251a33 !important; }
+    html.dark .bg-cream-100, html.dark .bg-cream-200 { background: #2c2238 !important; }
+    html.dark .border-cream-200, html.dark .border-cream-300 { border-color: #3a2e4a !important; }
+    html.dark .text-lavender-700, html.dark .text-lavender-800 { color: #c8b8ea !important; }
+    html.dark .text-lavender-600 { color: #b8a5d9 !important; }
+    html.dark .text-lavender-400 { color: #9b8ec4 !important; }
+    html.dark .text-gray-700 { color: #e8e2f0 !important; }
+    html.dark .compact-input { background: #2c2238; color: #e8e2f0; }
+    html.dark .compact-input:focus { background: #332846; }
+    html.dark .compact-input::placeholder { color: #7a6e8c; }
+    html.dark .check-cell { background: #2c2238; border-color: #3a2e4a; }
+    html.dark .check-cell.checked { background: #2a3a2f; border-color: #5e9670; }
+    html.dark .bg-sage-100, html.dark .bg-sage-200 { background: #233024 !important; }
+    html.dark .hover\:bg-lavender-100:hover { background: #332846 !important; }
   </style>
 </head>
 <body data-id="0" class="min-h-screen flex flex-col">
@@ -131,7 +160,10 @@
   <!-- HEADER -->
   <header data-id="3" class="sticky top-0 z-50 bg-white/90 backdrop-blur-md shadow-sm">
     <div data-id="4" class="max-w-7xl mx-auto px-4 md:px-6 py-3 flex items-center justify-between">
-      <h1 data-id="5" class="text-lg md:text-xl font-bold text-lavender-700">My Weekly Planner ✨</h1>
+      <div class="flex items-center gap-2">
+        <img src="icons/logo.png" alt="Shirell logo" class="w-9 h-9 rounded-lg object-contain" />
+        <h1 data-id="5" class="text-lg md:text-xl font-bold text-lavender-700">My Weekly Planner ✨</h1>
+      </div>
       <div data-id="6" class="flex items-center gap-2 md:gap-3">
         <button data-id="7" id="prev-week" class="p-2 rounded-xl hover:bg-lavender-100 transition" aria-label="Previous week">
           <i data-id="8" data-lucide="chevron-left" class="w-5 h-5 text-lavender-600"></i>
@@ -145,6 +177,12 @@
       </div>
       <div class="flex items-center gap-2">
         <button id="install-btn" class="hidden px-3 py-1.5 text-xs font-semibold rounded-xl bg-sage-500 text-white hover:bg-sage-600 transition" title="Install this app on your device">⬇️ Install App</button>
+        <button id="reminders-btn" class="p-2 rounded-xl hover:bg-lavender-100 transition" aria-label="Toggle medication reminders" title="Medication reminders (while app is open)">
+          <i data-lucide="bell" class="w-5 h-5 text-lavender-600"></i>
+        </button>
+        <button id="theme-toggle-btn" class="p-2 rounded-xl hover:bg-lavender-100 transition" aria-label="Toggle dark mode" title="Toggle dark mode">
+          <i data-lucide="moon" class="w-5 h-5 text-lavender-600"></i>
+        </button>
         <button id="data-menu-btn" class="p-2 rounded-xl hover:bg-lavender-100 transition" aria-label="Data options" title="Backup, restore, calendar export">
           <i data-lucide="settings" class="w-5 h-5 text-lavender-600"></i>
         </button>
@@ -166,6 +204,7 @@
       <button data-id="15" class="tab-btn whitespace-nowrap px-4 py-2 text-sm font-medium rounded-t-xl transition" data-tab="mood">😊 Mood & Focus</button>
       <button data-id="16" class="tab-btn whitespace-nowrap px-4 py-2 text-sm font-medium rounded-t-xl transition" data-tab="meds">💊 Medication</button>
       <button class="tab-btn whitespace-nowrap px-4 py-2 text-sm font-medium rounded-t-xl transition" data-tab="journal">📓 Journal</button>
+      <button class="tab-btn whitespace-nowrap px-4 py-2 text-sm font-medium rounded-t-xl transition" data-tab="coping">🧘 Coping Log</button>
       <button data-id="17" class="tab-btn whitespace-nowrap px-4 py-2 text-sm font-medium rounded-t-xl transition" data-tab="summary">📊 Weekly Summary</button>
     </nav>
   </header>
@@ -206,6 +245,7 @@
             <select data-id="37" id="med-freq" class="compact-input">
               <option data-id="38" value="daily">Daily</option>
               <option data-id="39" value="twice">Twice Daily</option>
+              <option value="weekly">Weekly (e.g. Wegovy)</option>
               <option data-id="40" value="asneeded">As Needed</option>
             </select>
             <select data-id="41" id="med-time" class="compact-input">
@@ -213,6 +253,18 @@
               <option data-id="43" value="afternoon">☀️ Afternoon</option>
               <option data-id="44" value="evening">🌇 Evening</option>
               <option data-id="45" value="bedtime">🌙 Bedtime</option>
+            </select>
+          </div>
+          <div id="med-weekday-wrap" class="hidden mt-3 max-w-xs">
+            <label class="text-xs font-semibold text-lavender-600 uppercase tracking-wider mb-1 block">Which day of the week?</label>
+            <select id="med-weekday" class="compact-input">
+              <option value="0">Sunday</option>
+              <option value="1" selected>Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6">Saturday</option>
             </select>
           </div>
           <div data-id="46" class="mt-3">
@@ -248,6 +300,52 @@
             <input type="text" id="journal-search" class="compact-input text-xs" style="width:auto; max-width:200px;" placeholder="🔍 Search entries..." />
           </div>
           <div id="journal-list" class="space-y-3"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: COPING LOG -->
+    <section id="tab-coping" class="tab-content">
+      <div class="max-w-3xl mx-auto space-y-6">
+        <div class="bg-white rounded-2xl p-5 md:p-6" style="box-shadow: 0 2px 12px rgba(155,142,196,0.08);">
+          <h2 class="text-lg font-semibold text-lavender-700 mb-1">🧘 Coping Log</h2>
+          <p class="text-xs text-lavender-400 mb-4">Track what triggered a tough moment, what you tried, and whether it helped.</p>
+          <label class="text-xs font-semibold text-peach-600 uppercase tracking-wider mb-1 block">What happened / trigger</label>
+          <textarea id="coping-situation" class="compact-input mb-3" rows="2" placeholder="What was going on?"></textarea>
+          <label class="text-xs font-semibold text-sage-600 uppercase tracking-wider mb-1 block">Coping strategy used</label>
+          <select id="coping-strategy" class="compact-input mb-2">
+            <option value="">Select a strategy...</option>
+            <option value="Deep breathing">🌬️ Deep breathing</option>
+            <option value="Grounding (5-4-3-2-1)">🌳 Grounding (5-4-3-2-1)</option>
+            <option value="Walked away / took space">🚶 Walked away / took space</option>
+            <option value="Talked to someone">💬 Talked to someone</option>
+            <option value="Journaling">📓 Journaling</option>
+            <option value="Movement / exercise">🏃 Movement / exercise</option>
+            <option value="Mindfulness / meditation">🧘 Mindfulness / meditation</option>
+            <option value="Distraction (hobby)">🎨 Distraction (hobby)</option>
+            <option value="Other">✏️ Other (describe below)</option>
+          </select>
+          <input type="text" id="coping-strategy-other" class="compact-input mb-3 hidden" placeholder="Describe the strategy you used..." />
+          <label class="text-xs font-semibold text-lavender-600 uppercase tracking-wider mb-2 block">Did it help?</label>
+          <div class="flex gap-1 mb-3" id="coping-effectiveness-stars">
+            <button type="button" class="coping-star-btn text-2xl" data-star="1">☆</button>
+            <button type="button" class="coping-star-btn text-2xl" data-star="2">☆</button>
+            <button type="button" class="coping-star-btn text-2xl" data-star="3">☆</button>
+            <button type="button" class="coping-star-btn text-2xl" data-star="4">☆</button>
+            <button type="button" class="coping-star-btn text-2xl" data-star="5">☆</button>
+          </div>
+          <textarea id="coping-notes" class="compact-input mb-3" rows="2" placeholder="Anything else you want to remember..."></textarea>
+          <div class="flex items-center justify-between">
+            <button id="coping-save-btn" class="px-5 py-2 bg-lavender-500 text-white rounded-xl text-sm font-medium hover:bg-lavender-600 transition">Save Entry</button>
+            <button id="coping-cancel-btn" class="hidden px-4 py-2 text-sm text-lavender-500 hover:text-lavender-700 transition">Cancel edit</button>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 md:p-6" style="box-shadow: 0 2px 12px rgba(155,142,196,0.08);">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-semibold text-lavender-700">Past Entries</h3>
+            <input type="text" id="coping-search" class="compact-input text-xs" style="width:auto; max-width:200px;" placeholder="🔍 Search entries..." />
+          </div>
+          <div id="coping-list" class="space-y-3"></div>
         </div>
       </div>
     </section>
@@ -495,6 +593,7 @@
       if (tab === 'mood') renderMood();
       if (tab === 'meds') renderMeds();
       if (tab === 'journal') renderJournal();
+      if (tab === 'coping') renderCoping();
       if (tab === 'summary') renderSummary();
     }
 
@@ -726,6 +825,9 @@
     }
 
     // ── TAB 3: MEDICATIONS ──
+    const FREQ_LABELS = { daily: 'Daily', twice: 'Twice Daily', weekly: 'Weekly', asneeded: 'As Needed' };
+    const WEEKDAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
     function medsListKey() { return 'meds_list'; }
     function medsCheckKey() { return 'meds_checks_' + getWeekKey(currentWeekStart); }
     function medsNotesKey() { return 'meds_notes_' + getWeekKey(currentWeekStart); }
@@ -767,7 +869,7 @@
         html += '<tr class="border-t border-cream-200">';
         html += `<td class="py-3 px-2">
           <div class="font-medium text-lavender-700">${escHTML(m.name)}</div>
-          <div class="text-xs text-lavender-400">${escHTML(m.dosage)} · ${escHTML(m.freq)} · ${escHTML(m.time)}</div>
+          <div class="text-xs text-lavender-400">${escHTML(m.dosage)} · ${FREQ_LABELS[m.freq] || escHTML(m.freq)}${m.freq === 'weekly' && m.weekday != null ? ' (' + WEEKDAY_NAMES[m.weekday] + ')' : ''} · ${escHTML(m.time)}</div>
         </td>`;
         dates.forEach(dt => {
           const dk = fmtISO(dt);
@@ -790,6 +892,9 @@
     // ── EVENT DELEGATION for Medication Tab ──
     // This uses document-level event delegation so it works regardless of
     // whether the tab content is visible or has been re-rendered.
+    document.getElementById('med-freq').addEventListener('change', (e) => {
+      document.getElementById('med-weekday-wrap').classList.toggle('hidden', e.target.value !== 'weekly');
+    });
     document.addEventListener('keydown', function(e) {
       // Let Enter in any "add medication" field submit the form, same as tapping the button —
       // many users expect Enter to save, and won't notice a button below the fold on mobile.
@@ -809,12 +914,14 @@
         const dosageInput = document.getElementById('med-dosage');
         const freqSelect = document.getElementById('med-freq');
         const timeSelect = document.getElementById('med-time');
+        const weekdaySelect = document.getElementById('med-weekday');
         const errorEl = document.getElementById('med-name-error');
 
         const name = nameInput.value.trim();
         const dosage = dosageInput.value.trim();
         const freq = freqSelect.value;
         const time = timeSelect.value;
+        const weekday = freq === 'weekly' ? parseInt(weekdaySelect.value) : null;
 
         // Validate medication name
         if (!name) {
@@ -830,7 +937,7 @@
 
         // Save to AppSDK
         const meds = await getMedsList();
-        meds.push({ id: 'med_' + Date.now(), name, dosage, freq, time });
+        meds.push({ id: 'med_' + Date.now(), name, dosage, freq, time, weekday });
         await saveData(medsListKey(), meds);
 
         // Clear all form fields
@@ -838,6 +945,7 @@
         dosageInput.value = '';
         freqSelect.selectedIndex = 0;
         timeSelect.selectedIndex = 0;
+        document.getElementById('med-weekday-wrap').classList.add('hidden');
 
         // Re-render the medication list and grid
         await renderMeds();
@@ -942,12 +1050,25 @@
       });
       focusChart.innerHTML = focusHtml;
 
-      // Medication adherence
-      let totalChecks = 0, totalPossible = meds.length * 7;
+      // Medication adherence — expected dose count now depends on frequency
+      // (daily=7/wk, twice=14/wk, weekly=1/wk; "as needed" meds are excluded since
+      // there's no fixed schedule to measure against).
+      function expectedDosesPerWeek(freq) {
+        if (freq === 'daily') return 7;
+        if (freq === 'twice') return 14;
+        if (freq === 'weekly') return 1;
+        return 0;
+      }
+      let totalChecks = 0, totalPossible = 0;
       meds.forEach(m => {
+        const expected = expectedDosesPerWeek(m.freq);
+        if (expected === 0) return;
+        let checkedThisMed = 0;
         dates.forEach(dt => {
-          if (checks[m.id] && checks[m.id][fmtISO(dt)]) totalChecks++;
+          if (checks[m.id] && checks[m.id][fmtISO(dt)]) checkedThisMed++;
         });
+        totalChecks += Math.min(checkedThisMed, expected); // cap so over-checking a weekly med can't exceed 100%
+        totalPossible += expected;
       });
       const adherence = totalPossible > 0 ? Math.round(totalChecks / totalPossible * 100) : 0;
       const circumference = 2 * Math.PI * 52;
@@ -1091,6 +1212,149 @@
       renderJournal();
     });
 
+    // ── TAB: COPING LOG ──
+    // A flat list of entries (like Journal) so it works across any year/week.
+    function copingKey() { return 'coping_entries'; }
+    async function getCopingEntries() { return await loadData(copingKey(), []); }
+
+    let copingEditId = null;
+    let copingSearchTerm = '';
+    let copingEffectiveness = 0; // 0-5, currently selected star rating in the draft form
+
+    function renderCopingStars() {
+      document.querySelectorAll('#coping-effectiveness-stars .coping-star-btn').forEach(btn => {
+        const n = parseInt(btn.dataset.star);
+        btn.textContent = n <= copingEffectiveness ? '★' : '☆';
+        btn.classList.toggle('text-lavender-500', n <= copingEffectiveness);
+        btn.classList.toggle('text-lavender-200', n > copingEffectiveness);
+      });
+    }
+
+    document.getElementById('coping-effectiveness-stars').addEventListener('click', (e) => {
+      const btn = e.target.closest('.coping-star-btn');
+      if (!btn) return;
+      const n = parseInt(btn.dataset.star);
+      // Clicking the already-selected star clears the rating, same toggle behavior as Mood's focus stars
+      copingEffectiveness = (copingEffectiveness === n) ? 0 : n;
+      renderCopingStars();
+    });
+
+    document.getElementById('coping-strategy').addEventListener('change', (e) => {
+      document.getElementById('coping-strategy-other').classList.toggle('hidden', e.target.value !== 'Other');
+    });
+
+    function resetCopingForm() {
+      copingEditId = null;
+      copingEffectiveness = 0;
+      document.getElementById('coping-situation').value = '';
+      document.getElementById('coping-strategy').value = '';
+      document.getElementById('coping-strategy-other').value = '';
+      document.getElementById('coping-strategy-other').classList.add('hidden');
+      document.getElementById('coping-notes').value = '';
+      document.getElementById('coping-cancel-btn').classList.add('hidden');
+      document.getElementById('coping-save-btn').textContent = 'Save Entry';
+      renderCopingStars();
+    }
+
+    async function renderCoping() {
+      const entries = (await getCopingEntries()).slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const list = document.getElementById('coping-list');
+      const term = copingSearchTerm.trim().toLowerCase();
+      const filtered = term
+        ? entries.filter(e => (e.situation || '').toLowerCase().includes(term) || (e.strategy || '').toLowerCase().includes(term) || (e.notes || '').toLowerCase().includes(term))
+        : entries;
+
+      if (filtered.length === 0) {
+        list.innerHTML = `<p class="text-center text-lavender-400 text-sm py-8">${term ? 'No entries match your search.' : 'No coping log entries yet. Log your first one above! 🧘'}</p>`;
+        return;
+      }
+
+      list.innerHTML = filtered.map(e => `
+        <div class="p-4 rounded-xl bg-cream-100 border border-cream-300">
+          <div class="flex items-start justify-between gap-2 mb-1">
+            <div class="font-semibold text-lavender-700 text-sm">${escHTML(e.strategy || 'Strategy not specified')}</div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button class="text-xs text-lavender-500 hover:text-lavender-700 transition coping-edit-btn" data-id="${e.id}">Edit</button>
+              <button class="text-xs text-peach-500 hover:text-peach-600 transition coping-del-btn" data-id="${e.id}">Delete</button>
+            </div>
+          </div>
+          <div class="text-[11px] text-lavender-400 mb-2">${fmtDateTime(e.createdAt)} ${e.effectiveness ? '· ' + '★'.repeat(e.effectiveness) + '☆'.repeat(5 - e.effectiveness) : ''}</div>
+          ${e.situation ? `<p class="text-sm text-gray-700 whitespace-pre-wrap mb-1"><span class="font-medium text-peach-600">Trigger:</span> ${escHTML(e.situation)}</p>` : ''}
+          ${e.notes ? `<p class="text-sm text-gray-700 whitespace-pre-wrap">${escHTML(e.notes)}</p>` : ''}
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('coping-save-btn').addEventListener('click', async () => {
+      const situationInput = document.getElementById('coping-situation');
+      const strategySelect = document.getElementById('coping-strategy');
+      const strategyOtherInput = document.getElementById('coping-strategy-other');
+      const notesInput = document.getElementById('coping-notes');
+
+      const strategy = strategySelect.value === 'Other' ? strategyOtherInput.value.trim() : strategySelect.value;
+      if (!strategy) { (strategySelect.value === 'Other' ? strategyOtherInput : strategySelect).focus(); return; }
+
+      const entries = await getCopingEntries();
+      if (copingEditId) {
+        const entry = entries.find(e => e.id === copingEditId);
+        if (entry) {
+          entry.situation = situationInput.value.trim();
+          entry.strategy = strategy;
+          entry.effectiveness = copingEffectiveness;
+          entry.notes = notesInput.value.trim();
+          entry.updatedAt = new Date().toISOString();
+        }
+      } else {
+        entries.push({
+          id: 'c_' + Date.now(),
+          situation: situationInput.value.trim(),
+          strategy,
+          effectiveness: copingEffectiveness,
+          notes: notesInput.value.trim(),
+          createdAt: new Date().toISOString()
+        });
+      }
+      await saveData(copingKey(), entries);
+      resetCopingForm();
+      await renderCoping();
+    });
+
+    document.getElementById('coping-cancel-btn').addEventListener('click', resetCopingForm);
+
+    document.getElementById('coping-list').addEventListener('click', async (e) => {
+      const editBtn = e.target.closest('.coping-edit-btn');
+      const delBtn = e.target.closest('.coping-del-btn');
+      if (editBtn) {
+        const entries = await getCopingEntries();
+        const entry = entries.find(x => x.id === editBtn.dataset.id);
+        if (entry) {
+          copingEditId = entry.id;
+          document.getElementById('coping-situation').value = entry.situation || '';
+          const strategySelect = document.getElementById('coping-strategy');
+          const knownOption = Array.from(strategySelect.options).some(o => o.value === entry.strategy);
+          strategySelect.value = knownOption ? entry.strategy : 'Other';
+          document.getElementById('coping-strategy-other').classList.toggle('hidden', knownOption);
+          document.getElementById('coping-strategy-other').value = knownOption ? '' : (entry.strategy || '');
+          copingEffectiveness = entry.effectiveness || 0;
+          renderCopingStars();
+          document.getElementById('coping-notes').value = entry.notes || '';
+          document.getElementById('coping-save-btn').textContent = 'Update Entry';
+          document.getElementById('coping-cancel-btn').classList.remove('hidden');
+          document.getElementById('coping-situation').focus();
+        }
+      } else if (delBtn) {
+        if (!confirm('Delete this coping log entry? This cannot be undone.')) return;
+        const entries = (await getCopingEntries()).filter(x => x.id !== delBtn.dataset.id);
+        await saveData(copingKey(), entries);
+        await renderCoping();
+      }
+    });
+
+    document.getElementById('coping-search').addEventListener('input', (e) => {
+      copingSearchTerm = e.target.value;
+      renderCoping();
+    });
+
     // ── WEEK NAVIGATION ──
     document.getElementById('prev-week').addEventListener('click', () => {
       currentWeekStart.setDate(currentWeekStart.getDate() - 7);
@@ -1121,6 +1385,87 @@
       updateWeekLabel();
       switchTab(activeTab);
     });
+
+    // ── DARK MODE TOGGLE ──
+    document.getElementById('theme-toggle-btn').addEventListener('click', () => {
+      const isDark = document.documentElement.classList.toggle('dark');
+      try { localStorage.setItem('weeklyplanner:theme', isDark ? 'dark' : 'light'); } catch (e) { /* ignore */ }
+    });
+
+    // ── MEDICATION REMINDERS ──
+    // Notifications only fire while this tab/app is open (no service-worker push backend),
+    // so this is a lightweight "while you're using the app" nudge rather than true background alerts.
+    const REMINDER_TIMES = { morning: '09:00', afternoon: '13:00', evening: '18:00', bedtime: '21:00' };
+    let remindersEnabled = false;
+    let remindersInterval = null;
+    const notifiedToday = new Set(); // "medId_slot" keys already notified today, reset at local midnight
+
+    function remindersKey() { return 'weeklyplanner:remindersEnabled'; }
+
+    function setReminderButtonState() {
+      const btn = document.getElementById('reminders-btn');
+      btn.classList.toggle('bg-lavender-100', remindersEnabled);
+      btn.title = remindersEnabled ? 'Medication reminders: ON (while app is open)' : 'Medication reminders (while app is open)';
+    }
+
+    async function checkMedReminders() {
+      if (!remindersEnabled || !('Notification' in window) || Notification.permission !== 'granted') return;
+      const now = new Date();
+      const todayKey = fmtISO(now);
+      const nowHM = now.toTimeString().slice(0, 5);
+      const meds = await getMedsList();
+      const checks = await getMedsChecks(); // checks are keyed by this calendar week; reminders assume the app is viewing the current week
+      meds.forEach(m => {
+        if (m.freq === 'asneeded') return;
+        if (m.freq === 'weekly' && m.weekday != null && m.weekday !== now.getDay()) return;
+        const slotTime = REMINDER_TIMES[m.time];
+        if (!slotTime || nowHM < slotTime) return;
+        const alreadyTaken = checks[m.id] && checks[m.id][todayKey];
+        const dedupeKey = `${m.id}_${todayKey}_${m.time}`;
+        if (alreadyTaken || notifiedToday.has(dedupeKey)) return;
+        notifiedToday.add(dedupeKey);
+        new Notification('💊 Medication reminder', { body: `Time for ${m.name}${m.dosage ? ' (' + m.dosage + ')' : ''}`, icon: 'icons/icon-192.png' });
+      });
+    }
+
+    async function setRemindersEnabled(enabled) {
+      remindersEnabled = enabled;
+      await saveData(remindersKey(), enabled);
+      setReminderButtonState();
+      if (enabled && !remindersInterval) {
+        remindersInterval = setInterval(checkMedReminders, 60000);
+        checkMedReminders();
+      } else if (!enabled && remindersInterval) {
+        clearInterval(remindersInterval);
+        remindersInterval = null;
+      }
+    }
+
+    document.getElementById('reminders-btn').addEventListener('click', async () => {
+      if (!('Notification' in window)) {
+        alert('Notifications aren\'t supported in this browser.');
+        return;
+      }
+      if (remindersEnabled) {
+        await setRemindersEnabled(false);
+        return;
+      }
+      let permission = Notification.permission;
+      if (permission === 'default') permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        alert('Enable notifications for this app to get medication reminders.');
+        return;
+      }
+      await setRemindersEnabled(true);
+    });
+
+    (async () => {
+      remindersEnabled = await loadData(remindersKey(), false);
+      setReminderButtonState();
+      if (remindersEnabled && 'Notification' in window && Notification.permission === 'granted') {
+        remindersInterval = setInterval(checkMedReminders, 60000);
+      }
+    })();
 
     // ── DATA MENU (backup / restore / calendar export) ──
     document.getElementById('data-menu-btn').addEventListener('click', () => {

@@ -1,6 +1,6 @@
 // Simple offline-first cache for the Weekly Planner PWA.
 // Bump CACHE_NAME whenever index.html or assets change to invalidate old caches.
-const CACHE_NAME = 'weekly-planner-v2';
+const CACHE_NAME = 'weekly-planner-v3';
 const ASSETS = [
   './',
   './index.html',

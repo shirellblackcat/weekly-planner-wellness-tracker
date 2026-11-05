@@ -1,53 +1,47 @@
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 import os
 
 OUT = os.path.dirname(os.path.abspath(__file__))
 ICON_DIR = os.path.join(OUT, "icons")
 os.makedirs(ICON_DIR, exist_ok=True)
 
-LAVENDER = (155, 142, 196, 255)
-LAVENDER_DARK = (99, 79, 145, 255)
-WHITE = (255, 255, 255, 255)
+LOGO_PATH = r"C:\Users\shire\.copilot\attachments\8e082be7-1b9f-4ace-8b7d-47469c5ed613-Main_logo_standalone.png"
+BRAND_BG = (37, 26, 51, 255)  # deep purple, matches lavender-800 family
 
-def make_icon(size, maskable=False):
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    pad = int(size * 0.08) if maskable else 0
-    draw.rounded_rectangle(
-        [pad, pad, size - pad, size - pad],
-        radius=int(size * 0.22),
-        fill=LAVENDER,
-    )
-    # simple heart-pulse style glyph using an emoji-like sparkle/heart shape
-    cx, cy = size / 2, size / 2
-    r = size * 0.16
-    # heart made of two circles + triangle
-    draw.ellipse([cx - r * 1.6, cy - r * 0.9, cx - r * 0.2, cy + r * 0.9], fill=WHITE)
-    draw.ellipse([cx + r * 0.2, cy - r * 0.9, cx + r * 1.6, cy + r * 0.9], fill=WHITE)
-    draw.polygon(
-        [
-            (cx - r * 1.5, cy + r * 0.3),
-            (cx + r * 1.5, cy + r * 0.3),
-            (cx, cy + r * 2.1),
-        ],
-        fill=WHITE,
-    )
-    return img
+logo = Image.open(LOGO_PATH).convert("RGBA")
+
+def make_standard(size):
+    """Transparent background, logo fills most of the square (used for favicon/app icon)."""
+    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    resized = logo.resize((size, size), Image.LANCZOS)
+    canvas.paste(resized, (0, 0), resized)
+    return canvas
+
+def make_maskable(size):
+    """Solid background + logo scaled down so it survives OS icon masking/cropping."""
+    canvas = Image.new("RGBA", (size, size), BRAND_BG)
+    safe = int(size * 0.72)  # keep within the ~80% safe zone recommended for maskable icons
+    resized = logo.resize((safe, safe), Image.LANCZOS)
+    offset = ((size - safe) // 2, (size - safe) // 2)
+    canvas.paste(resized, offset, resized)
+    return canvas
 
 for size in [192, 512]:
-    make_icon(size).save(os.path.join(ICON_DIR, f"icon-{size}.png"))
-    make_icon(size, maskable=True).save(os.path.join(ICON_DIR, f"icon-{size}-maskable.png"))
+    make_standard(size).save(os.path.join(ICON_DIR, f"icon-{size}.png"))
+    make_maskable(size).save(os.path.join(ICON_DIR, f"icon-{size}-maskable.png"))
 
-# apple touch icon (180x180, no transparency, square)
-apple = Image.new("RGBA", (180, 180), LAVENDER)
-d = ImageDraw.Draw(apple)
-cx, cy, r = 90, 90, 28
-d.ellipse([cx - r * 1.6, cy - r * 0.9, cx - r * 0.2, cy + r * 0.9], fill=WHITE)
-d.ellipse([cx + r * 0.2, cy - r * 0.9, cx + r * 1.6, cy + r * 0.9], fill=WHITE)
-d.polygon([(cx - r * 1.5, cy + r * 0.3), (cx + r * 1.5, cy + r * 0.3), (cx, cy + r * 2.1)], fill=WHITE)
-apple.convert("RGB").save(os.path.join(ICON_DIR, "apple-touch-icon.png"))
+# Apple touch icon: no alpha support, so flatten onto the brand background, 180x180
+apple_canvas = Image.new("RGBA", (180, 180), BRAND_BG)
+apple_safe = int(180 * 0.8)
+apple_logo = logo.resize((apple_safe, apple_safe), Image.LANCZOS)
+apple_offset = ((180 - apple_safe) // 2, (180 - apple_safe) // 2)
+apple_canvas.paste(apple_logo, apple_offset, apple_logo)
+apple_canvas.convert("RGB").save(os.path.join(ICON_DIR, "apple-touch-icon.png"))
 
-# favicon
-make_icon(64).save(os.path.join(ICON_DIR, "favicon.png"))
+# Favicon (transparent, small)
+make_standard(64).save(os.path.join(ICON_DIR, "favicon.png"))
 
-print("Icons generated:", os.listdir(ICON_DIR))
+# In-app header logo (small, transparent, moderate resolution for crispness on retina)
+make_standard(128).save(os.path.join(ICON_DIR, "logo.png"))
+
+print("Icons regenerated from brand logo:", sorted(os.listdir(ICON_DIR)))
